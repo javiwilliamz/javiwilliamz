@@ -1,0 +1,56 @@
+<#
+.SYNOPSIS
+    This PowerShell script ensures that the maximum size of the Windows Application event log is at least 32768 KB (32 MB).
+
+.NOTES
+    Author          : Javier Williams
+    LinkedIn        : linkedin.com/in/javi-williamz/
+    GitHub          : github.com/javiwilliamz
+    Date Created    : 2025-09-17
+    Last Modified   : 2025-09-17
+    Version         : 1.0
+    CVEs            : N/A
+    Plugin IDs      : N/A
+    STIG-ID         : WN10-AU-000500
+
+.TESTED ON
+    Date(s) Tested  : 
+    Tested By       : 
+    Systems Tested  : 
+    PowerShell Ver. : 
+
+.USAGE
+    Put any usage instructions here.
+    Example syntax:
+    PS C:\> .\__remediation_template(STIG-ID-WN10-AU-000500).ps1 
+#>
+
+ Check if Bluetooth hardware exists
+$bluetoothAdapters = Get-PnpDevice -Class Bluetooth -Status OK
+
+if ($bluetoothAdapters) {
+
+    foreach ($adapter in $bluetoothAdapters) {
+        Write-Output "Disabling Bluetooth adapter: $($adapter.FriendlyName)"
+        Disable-PnpDevice -InstanceId $adapter.InstanceId -Confirm:$false
+    }
+
+    # Also stop and disable the Bluetooth support service
+    $svcName = "bthserv"
+    if (Get-Service -Name $svcName -ErrorAction SilentlyContinue) {
+        Stop-Service -Name $svcName -Force
+        Set-Service -Name $svcName -StartupType Disabled
+    }
+
+    # Optionally disable other related services
+    $services = @("BluetoothUserService", "bthhfsrv")  # names may vary
+    foreach ($svc in $services) {
+        if (Get-Service -Name $svc -ErrorAction SilentlyContinue) {
+            Stop-Service -Name $svc -Force
+            Set-Service -Name $svc -StartupType Disabled
+        }
+    }
+
+} else {
+    Write-Output "No Bluetooth adapters found. STIG WN10-00-000210 is Not Applicable (NA)."
+}
